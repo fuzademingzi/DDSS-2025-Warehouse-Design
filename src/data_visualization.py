@@ -126,10 +126,34 @@ with tab2:
     
     with col1:
         # Pareto analisis
-        inventory_sorted = filtered_df.sort_values('inventory (units)', ascending=False)
+        inventory_sorted = filtered_df
+        inventory_sorted = inventory_sorted.sort_values('inventory (units)', ascending=False)
         inventory_sorted['cumulative_percent'] = inventory_sorted['inventory (units)'].cumsum() / inventory_sorted['inventory (units)'].sum() * 100
+
+        inventory_sorted['volum_total'] = inventory_sorted['volum (m3)'] * inventory_sorted['inventory (units)']
+        inventory_sorted = inventory_sorted.sort_values('volum_total', ascending=False)
+        inventory_sorted['volum_cumulative'] = inventory_sorted['volum_total'].cumsum() / inventory_sorted['volum_total'].sum() * 100
+
+        inventory_sorted['weight_total'] = inventory_sorted['weight (kg)'] * inventory_sorted['inventory (units)']
+        inventory_sorted = inventory_sorted.sort_values('weight_total', ascending=False)
+        inventory_sorted['weight_cumulative'] = inventory_sorted['weight_total'].cumsum() / inventory_sorted['weight_total'].sum() * 100
+        n = 0
+        abc_option = st.selectbox("Type of ABC-analysis", ("Classic", "Volume-based", "Weight-based"))
+        if abc_option == "Classic":
+            inventory_sorted = inventory_sorted.sort_values('inventory (units)', ascending=False)
+            data_y_option1 = inventory_sorted["inventory (units)"]
+            data_y_option2 = inventory_sorted["cumulative_percent"]
+        elif abc_option == "Volume-based":
+            inventory_sorted = inventory_sorted.sort_values('volum_total', ascending=False)
+            data_y_option1 = inventory_sorted["volum_total"]
+            data_y_option2 = inventory_sorted['volum_cumulative']
+        elif abc_option == "Weight-based":
+            inventory_sorted = inventory_sorted.sort_values('weight_total', ascending=False)
+            data_y_option1 = inventory_sorted["weight_total"]
+            data_y_option2 = inventory_sorted["weight_cumulative"]
+
         inventory_sorted['rank'] = range(1, len(inventory_sorted) + 1)
-        
+
         # add the Pareto chart
         fig = make_subplots(specs=[[{"secondary_y": True}]])
         
@@ -137,7 +161,7 @@ with tab2:
         fig.add_trace(
             go.Bar(
                 x=inventory_sorted['rank'],
-                y=inventory_sorted['inventory (units)'],
+                y=data_y_option1,
                 name="Quantity",
                 marker_color='skyblue',
                 opacity=0.7
@@ -149,7 +173,7 @@ with tab2:
         fig.add_trace(
             go.Scatter(
                 x=inventory_sorted['rank'],
-                y=inventory_sorted['cumulative_percent'],
+                y=data_y_option2,
                 name="Cumulative percentage",
                 line=dict(color='red', width=3),
                 mode='lines'
@@ -157,15 +181,19 @@ with tab2:
             secondary_y=True,
         )
         
+        threshold_catA = 80
+        threshold_catB = 95
+        threshold_catC = 100
+
         # Add a reference line
-        fig.add_hline(y=80, line_dash="dash", line_color="green", secondary_y=True,
+        fig.add_hline(y=threshold_catA, line_dash="dash", line_color="green", secondary_y=True,
                      annotation_text="80%", annotation_position="right")
-        fig.add_hline(y=95, line_dash="dash", line_color="orange", secondary_y=True,
+        fig.add_hline(y=threshold_catB, line_dash="dash", line_color="orange", secondary_y=True,
                      annotation_text="95%", annotation_position="right")
         
         # Update the layout
         fig.update_layout(
-            title="Stock Pareto Analysis (ABC Classification)",
+            title=f"ABC-analysis {abc_option}",
             xaxis_title="Product serial number (in descending order by inventory)",
             height=500
         )
@@ -178,10 +206,9 @@ with tab2:
     with col2:
         # ABC Classification
         total_inventory = inventory_sorted['inventory (units)'].sum()
-        a_class = inventory_sorted[inventory_sorted['cumulative_percent'] <= 80]
-        b_class = inventory_sorted[(inventory_sorted['cumulative_percent'] > 80) & 
-                                 (inventory_sorted['cumulative_percent'] <= 95)]
-        c_class = inventory_sorted[inventory_sorted['cumulative_percent'] > 95]
+        a_class = inventory_sorted[data_y_option2 <= threshold_catA]
+        b_class = inventory_sorted[(data_y_option2 > threshold_catA) & (data_y_option2 <= threshold_catB)]
+        c_class = inventory_sorted[data_y_option2 > threshold_catB]
         
         st.subheader("ABC Classification")
         col_a, col_b, col_c = st.columns(3)
@@ -203,7 +230,7 @@ with tab2:
         fig2 = px.histogram(
             filtered_df,
             x='inventory (units)',
-            nbins=30,
+            nbins=60,
             title='Inventory quantity distribution histogram',
             color_discrete_sequence=['lightgreen']
         )
@@ -220,16 +247,19 @@ with tab2:
         col3, col4, col5 = st.columns(3)
         with col3:
             st.write('Category A')
-            st.dataframe(a_class[['code', 'weight (kg)', 'volum (m3)', 'inventory (units)', 'rank']], hide_index=True)
-            st.write(f"Total number: {len(a_class)}")
+            st.dataframe(a_class[['code', 'weight (kg)', 'volum (m3)', 'inventory (units)', 'rank']])
+            st.write(f"Total number of products: {len(a_class)}")
+            st.write(f"Total number of units: {sum(a_class['inventory (units)'])} ({sum(a_class['inventory (units)'])/total_inventory*100:.3f}%)")
         with col4:
             st.write('Category B')
-            st.dataframe(b_class[['code', 'weight (kg)', 'volum (m3)', 'inventory (units)', 'rank']], hide_index=True)
-            st.write(f"Total number: {len(b_class)}")
+            st.dataframe(b_class[['code', 'weight (kg)', 'volum (m3)', 'inventory (units)', 'rank']])
+            st.write(f"Total number of products: {len(b_class)}")
+            st.write(f"Total number of units: {sum(b_class['inventory (units)'])} ({sum(b_class['inventory (units)'])/total_inventory*100:.3f}%)")  
         with col5:
             st.write('Category C')
-            st.dataframe(c_class[['code', 'weight (kg)', 'volum (m3)', 'inventory (units)', 'rank']], hide_index=True)
-            st.write(f"Total number: {len(c_class)}")
+            st.dataframe(c_class[['code', 'weight (kg)', 'volum (m3)', 'inventory (units)', 'rank']])
+            st.write(f"Total number of products: {len(c_class)}")
+            st.write(f"Total number of units: {sum(c_class['inventory (units)'])} ({sum(c_class['inventory (units)'])/total_inventory*100:.3f}%)")
 
 with tab3:
     st.header("Weight-volume relationship")
