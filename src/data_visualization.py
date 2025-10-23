@@ -328,14 +328,35 @@ with tab4:
     
     with col1:
         # Volume distribution
-        fig1 = px.histogram(
-            filtered_df,
-            x='volum (m3)',
-            nbins=50,
-            title='Product volume distribution histogram',
-            color_discrete_sequence=['lightcoral'],
-            opacity=0.7
-        )
+        # Build histogram with log-spaced bins so bars show correctly when using a log x-axis
+        data = filtered_df['volum (m3)'].dropna()
+        # ensure positive values for log scale
+        data_pos = data[data > 0]
+        if data_pos.empty:
+            # fallback: no positive values, plot regular histogram
+            fig1 = px.histogram(
+                filtered_df,
+                x='volum (m3)',
+                nbins=50,
+                title='Product volume distribution histogram',
+                color_discrete_sequence=['lightcoral'],
+                opacity=0.7
+            )
+        else:
+            # create 100 log-spaced bins from min to max
+            bins = np.logspace(np.log10(data_pos.min()), np.log10(data_pos.max()), 51)
+            counts, edges = np.histogram(data_pos, bins=bins)
+            bin_centers = (edges[:-1] + edges[1:]) / 2
+            fig1 = go.Figure()
+            fig1.add_trace(go.Bar(
+                x=bin_centers,
+                y=counts,
+                width=edges[1:] - edges[:-1],
+                marker_color='lightcoral',
+                opacity=0.7
+            ))
+            fig1.update_xaxes(type='log')
+            fig1.update_layout(title='Product volume distribution histogram')
         
         # Add the mean & median line
         mean_vol = filtered_df['volum (m3)'].mean()
@@ -361,7 +382,8 @@ with tab4:
             filtered_df,
             y='volum (m3)',
             title='Volume distribution box plot',
-            color_discrete_sequence=['orange']
+            color_discrete_sequence=['orange'],
+            log_y=True
         )
         
         fig2.update_layout(
@@ -392,23 +414,44 @@ with tab5:
     
     with col1:
         # Weight distribution
-        fig1 = px.histogram(
-            filtered_df,
-            x='weight (kg)',
-            nbins=50,
-            title='Product volume distribution histogram',
-            color_discrete_sequence=['lightgreen'],
-            opacity=0.7
-        )
+        # Build histogram with log-spaced bins so bars show correctly when using a log x-axis
+        data = filtered_df['weight (kg)'].dropna()
+        # ensure positive values for log scale
+        data_pos = data[data > 0]
+        if data_pos.empty:
+            # fallback: no positive values, plot regular histogram
+            fig1 = px.histogram(
+                filtered_df,
+                x='weight (kg)',
+                nbins=50,
+                title='Product weight distribution histogram',
+                color_discrete_sequence=['lightgreen'],
+                opacity=0.7
+            )
+        else:
+            # create 100 log-spaced bins from min to max
+            bins = np.logspace(np.log10(data_pos.min()), np.log10(data_pos.max()), 51)
+            counts, edges = np.histogram(data_pos, bins=bins)
+            bin_centers = (edges[:-1] + edges[1:]) / 2
+            fig1 = go.Figure()
+            fig1.add_trace(go.Bar(
+                x=bin_centers,
+                y=counts,
+                width=edges[1:] - edges[:-1],
+                marker_color='lightgreen',
+                opacity=0.7
+            ))
+            fig1.update_xaxes(type='log')
+            fig1.update_layout(title='Product weight distribution histogram')
         
         # Add the mean & median line
-        mean_vol = filtered_df['weight (kg)'].mean()
-        median_vol = filtered_df['weight (kg)'].median()
+        mean_weight = filtered_df['weight (kg)'].mean()
+        median_weight = filtered_df['weight (kg)'].median()
         
-        fig1.add_vline(x=mean_vol, line_dash="dash", line_color="green", 
-                      annotation_text=f"Mean: {mean_vol:.4f}")
-        fig1.add_vline(x=median_vol, line_dash="dash", line_color="blue",
-                      annotation_text=f"Median: {median_vol:.4f}")
+        fig1.add_vline(x=mean_weight, line_dash="dash", line_color="red", 
+                      annotation_text=f"Mean: {mean_weight:.4f}")
+        fig1.add_vline(x=median_weight, line_dash="dash", line_color="blue",
+                      annotation_text=f"Median: {median_weight:.4f}")
         
         fig1.update_layout(
             xaxis_title='Weight (kg)',
@@ -425,7 +468,8 @@ with tab5:
             filtered_df,
             y='weight (kg)',
             title='Weight distribution box plot',
-            color_discrete_sequence=['purple']
+            color_discrete_sequence=['purple'],
+            log_y=True
         )
         
         fig2.update_layout(
