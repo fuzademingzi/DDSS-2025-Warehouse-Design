@@ -140,7 +140,7 @@ with tab2:
         n = 0
         abc_option = st.selectbox("Type of ABC-analysis", ("Classic", "Volume-based", "Weight-based"))
         if abc_option == "Classic":
-            inventory_sorted = inventory_sorted.sort_values('inventory (units)', ascending=False)
+            inventory_sorted = inventory_sorted.sort_values('cumulative_percent', ascending=True)
             data_y_option1 = inventory_sorted["inventory (units)"]
             data_y_option2 = inventory_sorted["cumulative_percent"]
         elif abc_option == "Volume-based":
